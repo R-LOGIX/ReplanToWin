@@ -1,0 +1,490 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style></style>
+  </head>
+  <body>
+    <!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEST OS // CORE v6.1</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #020617;
+            --panel: rgba(15, 23, 42, 0.95);
+            --accent: #00f2ff;
+            --accent-glow: rgba(0, 242, 255, 0.3);
+            --text: #e2e8f0;
+            --danger: #ff4757;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg);
+            background-image: radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%);
+            color: var(--text); font-family: 'Noto Sans JP', sans-serif; margin: 0; min-height: 100vh;
+        }
+
+        nav {
+            display: flex; justify-content: space-around; background: rgba(0, 0, 0, 0.9);
+            border-bottom: 2px solid var(--accent-glow); padding: 12px;
+            position: sticky; top: 0; z-index: 1000;
+        }
+        nav div { cursor: pointer; font-size: 0.7rem; color: #64748b; font-family: 'Orbitron'; font-weight: bold; letter-spacing: 1px; }
+        nav div.active { color: var(--accent); text-shadow: 0 0 10px var(--accent); }
+
+        .view { max-width: 800px; margin: 20px auto; padding: 0 20px; display: none; }
+        .view.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .glass-card {
+            background: var(--panel); border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px; padding: 20px; margin-bottom: 15px;
+        }
+
+        h3 { font-size: 1rem; color: var(--accent); margin-top: 0; border-left: 3px solid var(--accent); padding-left: 10px; }
+
+        button {
+            background: linear-gradient(135deg, var(--accent), #0099ff); color: #000;
+            border: none; padding: 16px; border-radius: 8px; font-weight: bold; cursor: pointer; 
+            width: 100%; font-size: 1rem; margin-bottom: 10px;
+        }
+        button:active { transform: scale(0.98); }
+        button.secondary { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+        button.danger { background: rgba(255, 71, 87, 0.1); border: 1px solid var(--danger); color: var(--danger); padding: 8px 12px; width: auto; font-size: 0.8rem; }
+
+        input, select, textarea {
+            background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff; padding: 12px; border-radius: 8px; width: 100%; margin-bottom: 12px; font-size: 1rem;
+        }
+
+        .item-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .status-tag { font-size: 0.65rem; background: var(--accent); color: #000; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+
+        #loading {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(2, 6, 23, 0.95); z-index: 2000; display: none;
+            flex-direction: column; align-items: center; justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+<div id="loading">
+    <div style="font-size: 3rem; animation: pulse 1s infinite;">⚡</div>
+    <div style="font-family: 'Orbitron'; color: var(--accent); letter-spacing: 3px; margin-top: 15px;">AI GENERATING...</div>
+</div>
+
+<nav>
+    <div onclick="switchView('home')" id="nav-home" class="active">ホーム</div>
+    <div onclick="switchView('settings')" id="nav-settings">1. 教材登録</div>
+    <div onclick="switchView('progress')" id="nav-progress">2. 進捗入力</div>
+    <div onclick="switchView('plan')" id="nav-plan">3. 計画表</div>
+</nav>
+
+<div id="view-home" class="view active">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+        <div class="glass-card" style="text-align: center;">
+            <small style="opacity:0.6;">全体の進捗</small>
+            <div id="stat-progress" style="font-family: 'Orbitron'; font-size: 2rem; color: var(--accent);">0%</div>
+        </div>
+        <div class="glass-card" style="text-align: center;">
+            <small style="opacity:0.6;">最短の試験まで</small>
+            <div id="stat-days" style="font-family: 'Orbitron'; font-size: 2rem; color: #bc00ff;">--</div>
+        </div>
+    </div>
+    <div class="glass-card">
+        <h3>本日の学習タスク</h3>
+        <div id="today-list"></div>
+    </div>
+    <button onclick="switchView('progress')">今日の進捗を記録する</button>
+    <button id="main-plan-btn" onclick="generatePlan()" class="secondary">計画を生成する</button>
+</div>
+
+<div id="view-settings" class="view">
+    <div class="glass-card">
+        <h3>新しい教材を追加する</h3>
+        <input id="in-sub" placeholder="科目 (例: 数学、英語)">
+        <input id="in-date" type="date">
+        <select id="in-mode" onchange="toggleMode()">
+            <option value="range">ページ範囲 (1-200 など)</option>
+            <option value="vol">合計件数 (1500語 など)</option>
+            <option value="list">項目リスト (歴史用語など)</option>
+        </select>
+        <div id="ui-range">
+            <input id="in-name-range" placeholder="教材名">
+            <input id="in-val-range" placeholder="範囲 (例: 1-150)">
+            <input id="in-unit-range" value="P" placeholder="単位">
+        </div>
+        <div id="ui-vol" style="display:none;">
+            <input id="in-name-vol" placeholder="教材名">
+            <input id="in-val-vol" type="number" placeholder="合計件数">
+            <input id="in-unit-vol" value="語" placeholder="単位">
+        </div>
+        <div id="ui-list" style="display:none;">
+            <input id="in-name-list" placeholder="教材名">
+            <textarea id="in-val-list" placeholder="項目をカンマ(,)で区切って入力" rows="3"></textarea>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+            <span>目標周回数:</span>
+            <input id="in-rounds" type="number" value="3" style="width: 80px; margin: 0;">
+        </div>
+        <button onclick="addMaterial()">この教材をリストに登録する</button>
+    </div>
+    <div class="glass-card">
+        <h3>登録済みの教材</h3>
+        <div id="registered-list"></div>
+    </div>
+</div>
+
+<div id="view-progress" class="view">
+    <h3>進捗の報告</h3>
+    <div id="progress-input-area"></div>
+</div>
+
+<div id="view-plan" class="view">
+    <h3>全日程の計画表</h3>
+    <div id="full-plan-area"></div>
+</div>
+
+<script>
+// --- AUDIO ENGINE (RESTORED) ---
+let audioCtx;
+function playSound(f, d) {
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.connect(g); g.connect(audioCtx.destination);
+        o.frequency.setValueAtTime(f, audioCtx.currentTime);
+        g.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + d);
+        o.start(); o.stop(audioCtx.currentTime + d);
+    } catch(e) {}
+}
+
+// --- DATA ---
+const KEY = 'test_os_v6_1_data';
+let state = { exams: [], plan: {} };
+
+function load() {
+    const saved = localStorage.getItem(KEY);
+    if (saved) state = JSON.parse(saved);
+}
+
+function save() {
+    try {
+        localStorage.setItem(KEY, JSON.stringify(state));
+    } catch(e) {
+        console.error('Storage Save Error', e);
+    }
+    render();
+}
+
+// --- UI ---
+function switchView(id) {
+    playSound(600, 0.1);
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('nav div').forEach(n => n.classList.remove('active'));
+    const target = document.getElementById(`view-${id}`);
+    if (target) {
+        target.classList.add('active');
+        document.getElementById(`nav-${id}`).classList.add('active');
+    }
+}
+
+function toggleMode() {
+    const m = document.getElementById('in-mode').value;
+    document.getElementById('ui-range').style.display = m === 'range' ? 'block' : 'none';
+    document.getElementById('ui-vol').style.display = m === 'vol' ? 'block' : 'none';
+    document.getElementById('ui-list').style.display = m === 'list' ? 'block' : 'none';
+}
+
+// --- LOGIC ---
+function addMaterial() {
+    const sub = document.getElementById('in-sub').value.trim();
+    const date = document.getElementById('in-date').value;
+    if (!sub || !date) return alert('科目名と日付を入力してください');
+
+    let exam = state.exams.find(e => e.subject === sub && e.date === date);
+    if (!exam) {
+        exam = { id: Date.now(), subject: sub, date: date, materials: [] };
+        state.exams.push(exam);
+    }
+
+    const mode = document.getElementById('in-mode').value;
+    const rounds = parseInt(document.getElementById('in-rounds').value) || 1;
+    const mId = Date.now() + Math.floor(Math.random() * 10000);
+
+    let newMat;
+    if (mode === 'range') {
+        let val = document.getElementById('in-val-range').value;
+        val = val.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/\s+/g, '');
+        const m = val.match(/^(\d+)[-〜~ー](\d+)$/);
+        if (!m) return alert('範囲は 1-100 のように数字とハイフンで入力してください');
+        newMat = { id: mId, type: 'range', name: document.getElementById('in-name-range').value || '教材', start: parseInt(m[1]), end: parseInt(m[2]), rounds, done: 0, doneRounds: new Array(rounds).fill(0), unit: document.getElementById('in-unit-range').value };
+    } else if (mode === 'vol') {
+        let val = document.getElementById('in-val-vol').value.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+        const total = parseInt(val);
+        if (!total) return alert('合計件数を数字で入力してください');
+        newMat = { id: mId, type: 'vol', name: document.getElementById('in-name-vol').value || '教材', total, rounds, done: 0, doneRounds: new Array(rounds).fill(0), unit: document.getElementById('in-unit-vol').value };
+    } else {
+        const items = document.getElementById('in-val-list').value.split(/[,、\n]/).filter(s => s.trim());
+        if (items.length === 0) return alert('項目を入力してください');
+        newMat = { id: mId, type: 'list', name: document.getElementById('in-name-list').value || '教材', items: items.map(l => ({ l: l.trim(), d: 0 })), rounds };
+    }
+
+    exam.materials.push(newMat);
+    playSound(800, 0.2);
+    save(); 
+    
+    if (state.exams.some(e => e.materials.some(m => m.id === mId))) {
+        alert('教材を登録しました');
+    } else {
+        alert('登録に失敗しました。もう一度お試しください。');
+    }
+}
+
+function generatePlan() {
+    if (state.exams.length === 0) return alert('先に教材を登録してください');
+    
+    playSound(400, 0.5);
+    document.getElementById('loading').style.display = 'flex';
+
+    setTimeout(() => {
+        try {
+            state.plan = {};
+            const today = new Date(); today.setHours(0,0,0,0);
+
+            state.exams.forEach(exam => {
+                const diff = Math.ceil((new Date(exam.date) - today) / 86400000);
+                const days = diff <= 0 ? 1 : diff;
+
+                exam.materials.forEach(mat => {
+                    if (mat.type === 'list') {
+                        let queue = [];
+                        mat.items.forEach(it => { for(let r=it.d+1; r<=mat.rounds; r++) queue.push({l: it.l, r}); });
+                        const perDay = Math.ceil(queue.length / days);
+                        let cur = 0;
+                        for (let i=0; i<days && cur<queue.length; i++) {
+                            const k = getDayKey(today, i);
+                            if (!state.plan[k]) state.plan[k] = [];
+                            for (let j=0; j<perDay && cur<queue.length; j++) {
+                                if (queue[cur]) {
+                                    const t = queue[cur++];
+                                    state.plan[k].push({ sub: exam.subject, mat: mat.name, desc: t.l, info: `${t.r}周目`, id: mat.id });
+                                }
+                            }
+                        }
+                    } else {
+                        // 互換性および周回ごとの計算
+                        let unitsPerRound = (mat.type === 'range' ? (mat.end - mat.start + 1) : mat.total);
+                        if (!mat.doneRounds) {
+                            mat.doneRounds = [];
+                            for(let r=0; r<mat.rounds; r++) {
+                                mat.doneRounds.push(Math.max(0, Math.min(unitsPerRound, (mat.done || 0) - r * unitsPerRound)));
+                            }
+                        } else if (mat.doneRounds.length !== mat.rounds) {
+                            while(mat.doneRounds.length < mat.rounds) mat.doneRounds.push(0);
+                            mat.doneRounds = mat.doneRounds.slice(0, mat.rounds);
+                        }
+
+                        let queue = [];
+                        for (let r=0; r<mat.rounds; r++) {
+                            let doneCount = mat.doneRounds[r] || 0;
+                            let remCount = unitsPerRound - doneCount;
+                            if (remCount > 0) {
+                                queue.push({ 
+                                    r: r+1, 
+                                    start: mat.type === 'range' ? (mat.start + doneCount) : null,
+                                    rem: remCount 
+                                });
+                            }
+                        }
+
+                        let totalRem = queue.reduce((sum, q) => sum + q.rem, 0);
+                        if (totalRem > 0) {
+                            const perDay = Math.ceil(totalRem / days);
+                            let qIdx = 0;
+                            
+                            for (let i=0; i<days && qIdx < queue.length; i++) {
+                                const k = getDayKey(today, i);
+                                if (!state.plan[k]) state.plan[k] = [];
+                                
+                                let dayRem = perDay;
+                                while (dayRem > 0 && qIdx < queue.length) {
+                                    let q = queue[qIdx];
+                                    let amt = Math.min(dayRem, q.rem);
+                                    
+                                    let descText = "";
+                                    if (mat.type === 'range') {
+                                        let pStart = q.start;
+                                        let pEnd = pStart + amt - 1;
+                                        descText = `${pStart}〜${pEnd}${mat.unit||''}`;
+                                        q.start = pEnd + 1;
+                                    } else {
+                                        descText = `${amt}${mat.unit||''}`;
+                                    }
+                                    
+                                    state.plan[k].push({
+                                        sub: exam.subject,
+                                        mat: mat.name,
+                                        desc: descText,
+                                        info: `${q.r}周目`,
+                                        id: mat.id
+                                    });
+                                    
+                                    q.rem -= amt;
+                                    dayRem -= amt;
+                                    
+                                    if (q.rem <= 0) qIdx++;
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+            save();
+            document.getElementById('loading').style.display = 'none';
+            playSound(1000, 0.3);
+            switchView('home');
+        } catch (e) {
+            document.getElementById('loading').style.display = 'none';
+            alert('計画作成中にエラーが発生しました');
+        }
+    }, 500);
+}
+
+function getDayKey(base, offset) {
+    const d = new Date(base); d.setDate(base.getDate() + offset);
+    return d.toISOString().split('T')[0];
+}
+
+function updateProg(matId, itIdx, val) {
+    const m = findMat(matId);
+    if (!m) return;
+    if (m.type === 'list') {
+        const r = parseInt(val) || 0;
+        if (itIdx === -1) m.items.forEach(it => it.d = r);
+        else m.items[itIdx].d = r;
+    } else {
+        const parsed = parseInt(val) || 0;
+        const limit = m.type === 'range' ? (m.end - m.start + 1) : m.total;
+        
+        if (itIdx > 0) {
+            const rIdx = itIdx - 1;
+            if (!m.doneRounds) m.doneRounds = new Array(m.rounds).fill(0);
+            while(m.doneRounds.length < m.rounds) m.doneRounds.push(0);
+            m.doneRounds[rIdx] = Math.max(0, Math.min(parsed, limit));
+            m.done = m.doneRounds.reduce((a,b)=>a+b, 0);
+        }
+    }
+    save();
+}
+
+function deleteMat(eId, mId) {
+    if(!confirm('削除しますか？')) return;
+    const e = state.exams.find(ex => ex.id === eId);
+    if (e) {
+        e.materials = e.materials.filter(m => m.id !== mId);
+        if (e.materials.length === 0) state.exams = state.exams.filter(ex => ex.id !== eId);
+    }
+    Object.keys(state.plan).forEach(k => state.plan[k] = state.plan[k].filter(t => t.id !== mId));
+    playSound(300, 0.1);
+    save();
+}
+
+function findMat(id) {
+    for (let e of state.exams) for (let m of e.materials) if (m.id == id) return m;
+    return null;
+}
+
+function render() {
+    const today = new Date().toISOString().split('T')[0];
+    const hasPlan = Object.keys(state.plan).length > 0;
+    document.getElementById('main-plan-btn').innerText = hasPlan ? 'AIで計画を最適化（立て直す）' : '学習計画を新規作成する';
+
+    let tAll = 0, tDone = 0;
+    state.exams.forEach(e => e.materials.forEach(m => {
+        if (m.type === 'list') { 
+            tAll += m.items.length * m.rounds; 
+            tDone += m.items.reduce((s,i)=>s+i.d, 0); 
+        } else { 
+            tAll += (m.type==='range'?(m.end-m.start+1):m.total)*m.rounds; 
+            if (m.doneRounds) {
+                tDone += m.doneRounds.reduce((a,b)=>a+b, 0);
+            } else {
+                tDone += m.done || 0; 
+            }
+        }
+    }));
+    document.getElementById('stat-progress').innerText = Math.floor((tDone/(tAll||1))*100) + '%';
+    
+    if (state.exams.length) {
+        const next = new Date(Math.min(...state.exams.map(e => new Date(e.date))));
+        const diff = Math.ceil((next - new Date()) / 86400000);
+        document.getElementById('stat-days').innerText = (diff < 0 ? 0 : diff) + '日';
+    }
+
+    const tasks = state.plan[today] || [];
+    document.getElementById('today-list').innerHTML = tasks.length ? tasks.map(t => `
+        <div class="item-row"><div><small>${t.sub}</small><br><b>${t.mat}: ${t.desc}</b></div><span class="status-tag">${t.info}</span></div>
+    `).join('') : '<p style="text-align:center; opacity:0.5;">予定なし</p>';
+
+    document.getElementById('registered-list').innerHTML = state.exams.map(e => e.materials.map(m => `
+        <div class="item-row"><div><small>${e.subject}</small><br><b>${m.name}</b></div><button class="danger" onclick="deleteMat(${e.id}, ${m.id})">削除</button></div>
+    `).join('')).join('') || '<p style="opacity:0.5;">登録なし</p>';
+
+    document.getElementById('progress-input-area').innerHTML = state.exams.map(e => e.materials.map(m => {
+        if (m.type === 'list') {
+            return `<div class="glass-card"><h3>${m.name}</h3>
+                <div class="item-row"><span>一括</span><input type="number" onchange="updateProg(${m.id},-1,this.value)" style="width:80px;"><span>周</span></div>
+                ${m.items.map((it, idx) => `<div class="item-row"><span>${it.l}</span><input type="number" value="${it.d}" onchange="updateProg(${m.id},${idx},this.value)" style="width:60px;"></div>`).join('')}</div>`;
+        } else {
+            let unitsPerRound = (m.type==='range'?(m.end-m.start+1):m.total);
+            if (!m.doneRounds) {
+                m.doneRounds = [];
+                for(let r=0; r<m.rounds; r++) {
+                    m.doneRounds.push(Math.max(0, Math.min(unitsPerRound, (m.done || 0) - r * unitsPerRound)));
+                }
+            } else if (m.doneRounds.length !== m.rounds) {
+                while(m.doneRounds.length < m.rounds) m.doneRounds.push(0);
+                m.doneRounds = m.doneRounds.slice(0, m.rounds);
+            }
+            
+            return `<div class="glass-card"><h3>${m.name}</h3>
+                ${m.doneRounds.map((d, r) => `
+                    <div class="item-row">
+                        <span>${r+1}周目</span>
+                        <div>
+                            <input type="number" value="${d}" onchange="updateProg(${m.id}, ${r+1}, this.value)" style="width:80px; margin-bottom:0; padding:8px;">
+                            <span style="font-size:0.9rem; margin-left:5px;">/ ${unitsPerRound} ${m.unit||''}</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>`;
+        }
+    }).join('')).join('');
+
+    const sorted = Object.keys(state.plan).sort();
+    document.getElementById('full-plan-area').innerHTML = sorted.map(k => `
+        <div class="glass-card"><div style="color:var(--accent); font-size:0.8rem;">${k}</div>
+        ${state.plan[k].map(t => `<div style="font-size:0.8rem;">[${t.sub}] ${t.mat}: ${t.desc} <span style="color:#64748b;">(${t.info})</span></div>`).join('')}</div>
+    `).join('') || '<p style="text-align:center; opacity:0.5;">計画なし</p>';
+}
+
+load();
+render();
+</script>
+</body>
+</html>
+
+    <script></script>
+  </body>
+</html>
