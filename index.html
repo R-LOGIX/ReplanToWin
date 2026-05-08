@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReplanToWin</title>
+    <link rel="icon" href="854.png" type="image/png">
+    <link rel="apple-touch-icon" href="854.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="loading">
+    <div style="font-size: 3rem; animation: pulse 1s infinite;">⚡</div>
+    <div style="font-family: 'Orbitron'; color: var(--accent); letter-spacing: 3px; margin-top: 15px;">AI GENERATING...</div>
+</div>
+
+<nav>
+    <div onclick="switchView('home')" id="nav-home" class="active">ホーム</div>
+    <div onclick="switchView('settings')" id="nav-settings">1. 教材登録</div>
+    <div onclick="switchView('progress')" id="nav-progress">2. 進捗入力</div>
+    <div onclick="switchView('plan')" id="nav-plan">3. 計画表</div>
+</nav>
+
+<div id="view-home" class="view active">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+        <div class="glass-card" style="text-align: center;">
+            <small style="opacity:0.6;">全体の進捗</small>
+            <div id="stat-progress" style="font-family: 'Orbitron'; font-size: 2rem; color: var(--accent);">0%</div>
+        </div>
+        <div class="glass-card" style="text-align: center;">
+            <small style="opacity:0.6;">最短の試験まで</small>
+            <div id="stat-days" style="font-family: 'Orbitron'; font-size: 2rem; color: #bc00ff;">--</div>
+        </div>
+    </div>
+    <div class="glass-card">
+        <h3>本日の学習タスク</h3>
+        <div id="today-list"></div>
+    </div>
+    <button onclick="switchView('progress')">今日の進捗を記録する</button>
+
+    <div class="glass-card" style="margin-bottom: 15px;">
+        <h3 style="font-size: 0.9rem; margin-bottom: 10px;">AI スケジューリング設定</h3>
+        <div class="item-row" style="padding: 5px 0; border: none;">
+            <span style="font-size: 0.9rem;">計画再開/開始日</span>
+            <input type="date" id="sys-start-date" style="width: auto; margin: 0; padding: 8px;">
+        </div>
+    </div>
+
+    <button id="main-plan-btn" onclick="generatePlan()" class="secondary">✨ AI学習計画を生成する</button>
+</div>
+
+<div id="view-settings" class="view">
+    <div class="glass-card">
+        <h3>新しい教材を追加する</h3>
+        <input id="in-sub" placeholder="科目 (例: 数学、英語)">
+        
+        <div style="margin-bottom: 12px;">
+            <label style="font-size: 0.8rem; color: var(--accent); display: block; margin-bottom: 4px;">試験日（または完了目標日）：</label>
+            <input id="in-date" type="date" style="margin-bottom: 0;">
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label style="font-size: 0.8rem; color: var(--accent); display: block; margin-bottom: 4px;">この教材を学習する曜日：</label>
+            <div class="checkbox-group" id="in-days">
+                <label><input type="checkbox" value="1" checked>月</label>
+                <label><input type="checkbox" value="2" checked>火</label>
+                <label><input type="checkbox" value="3" checked>水</label>
+                <label><input type="checkbox" value="4" checked>木</label>
+                <label><input type="checkbox" value="5" checked>金</label>
+                <label><input type="checkbox" value="6" checked>土</label>
+                <label><input type="checkbox" value="0" checked>日</label>
+            </div>
+        </div>
+
+        <select id="in-mode" onchange="toggleMode()">
+            <option value="range">ページ範囲 (1-200 など)</option>
+            <option value="vol">合計件数 (1500語 など)</option>
+            <option value="list">項目リスト (プリントAなど)</option>
+        </select>
+        <div id="ui-range">
+            <input id="in-name-range" placeholder="教材名">
+            <input id="in-val-range" placeholder="範囲 (例: 1-150)">
+            <input id="in-unit-range" value="P" placeholder="単位">
+        </div>
+        <div id="ui-vol" style="display:none;">
+            <input id="in-name-vol" placeholder="教材名">
+            <input id="in-val-vol" type="number" placeholder="合計件数">
+            <input id="in-unit-vol" value="語" placeholder="単位">
+        </div>
+        <div id="ui-list" style="display:none;">
+            <input id="in-name-list" placeholder="教材名">
+            <textarea id="in-val-list" placeholder="項目をカンマ(,)で区切って入力" rows="3"></textarea>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+            <span>目標周回数:</span>
+            <input id="in-rounds" type="number" value="3" style="width: 80px; margin: 0;">
+        </div>
+        <button onclick="addMaterial()">この教材をリストに登録する</button>
+    </div>
+    <div class="glass-card">
+        <h3>登録済みの教材</h3>
+        <div id="registered-list"></div>
+    </div>
+</div>
+
+<div id="view-progress" class="view">
+    <h3>進捗の報告</h3>
+    <div id="progress-input-area"></div>
+</div>
+
+<div id="view-plan" class="view">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 style="margin: 0;">全日程の計画表</h3>
+        <button id="btn-edit-plan" onclick="togglePlanEdit()" class="secondary" style="width: auto; padding: 6px 15px; margin: 0; font-size: 0.8rem;">✎ 編集</button>
+    </div>
+    <div id="full-plan-area"></div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
