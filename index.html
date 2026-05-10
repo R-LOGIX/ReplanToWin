@@ -281,6 +281,7 @@
 </nav>
 
 <div id="view-home" class="view active">
+    <!-- タイトルブロック -->
     <div class="home-title-block">
         <div class="app-logo">ReplanToWin</div>
         <div class="app-tagline">AI-Powered Study Scheduler</div>
@@ -370,6 +371,7 @@
             <input id="in-rounds" type="number" value="3" style="width: 80px; margin: 0;">
         </div>
 
+        <!-- ▼▼▼ 変更点2: 間隔反復学習バッジの説明文 ▼▼▼ -->
         <label id="spaced-label" class="spaced-badge" style="margin-bottom: 15px;">
             <input type="checkbox" id="in-spaced">
             <span class="spaced-badge-text">
@@ -379,6 +381,8 @@
             <span class="spaced-badge-recommend">強く推奨</span>
             <span id="spaced-note" style="display: none; color: var(--danger); font-size: 0.7rem;">※リスト教材では非対応</span>
         </label>
+        <!-- ▲▲▲ 変更点2 ここまで ▲▲▲ -->
+
         <button onclick="addMaterial()">この教材をリストに登録する</button>
     </div>
     <div class="glass-card">
@@ -400,6 +404,7 @@
     <div id="full-plan-area"></div>
 </div>
 
+<!-- ===== チュートリアルオーバーレイ ===== -->
 <div id="tutorial-overlay">
     <div class="tut-card">
         <div class="tut-step-num" id="tut-step-label">STEP 1 / 4</div>
@@ -809,3 +814,4 @@ function generatePlan() {
                 endDate.setHours(0,0,0,0);
                 
                 exam.materials.forEach(mat => {
+            
