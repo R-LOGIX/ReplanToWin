@@ -814,4 +814,326 @@ function generatePlan() {
                 endDate.setHours(0,0,0,0);
                 
                 exam.materials.forEach(mat => {
-            
+                    const matDays = (mat.days && mat.days.length > 0) ? mat.days : [0,1,2,3,4,5,6];
+                    let availableDates = [];
+                    let curDate = new Date(globalStart);
+                    while (curDate < endDate) {
+                        if (matDays.includes(curDate.getDay())) {
+                            availableDates.push(new Date(curDate));
+                        }
+                        curDate.setDate(curDate.getDate() + 1);
+                    }
+                    if (availableDates.length === 0) availableDates.push(new Date(globalStart));
+                    const daysCount = availableDates.length;
+
+                    if (mat.spaced && mat.type !== 'list') {
+                        const totalUnits = mat.type === 'range' ? (mat.end - mat.start + 1) : mat.total;
+                        const totalAmount = totalUnits * mat.rounds;
+                        const avgDaily = totalAmount / daysCount;
+                        let chunkSize = Math.ceil(avgDaily);
+                        if (chunkSize < 1) chunkSize = 1;
+                        const numChunks = Math.ceil(totalUnits / chunkSize);
+
+                        if (daysCount >= numChunks * (mat.rounds - 1) + 1) {
+                            let chunks = [];
+                            let unit = mat.unit || '';
+                            for (let i = 0; i < numChunks; i++) {
+                                let start, end;
+                                if (mat.type === 'range') {
+                                    start = mat.start + i * chunkSize;
+                                    end = Math.min(mat.start + (i + 1) * chunkSize - 1, mat.end);
+                                } else {
+                                    start = i * chunkSize + 1;
+                                    end = Math.min((i + 1) * chunkSize, mat.total);
+                                }
+                                chunks.push({ start, end });
+                            }
+
+                            let dayIdx = 0;
+
+                            for (let i = 0; i < numChunks; i++) {
+                                for (let r = 1; r < mat.rounds; r++) {
+                                    if (dayIdx >= daysCount) break;
+                                    const k = toYMD(availableDates[dayIdx]);
+                                    if (!state.plan[k]) state.plan[k] = [];
+                                    const desc = mat.type === 'range' || mat.type === 'vol' ? `${chunks[i].start}〜${chunks[i].end}${unit}` : `C${i+1}`;
+                                    state.plan[k].push({
+                                        sub: exam.subject,
+                                        mat: mat.name,
+                                        desc: desc,
+                                        info: `${r}周目`,
+                                        id: mat.id
+                                    });
+                                    dayIdx++;
+                                }
+                            }
+
+                            let remainingDays = daysCount - dayIdx;
+                            if (remainingDays > 0) {
+                                for (let i = 0; i < numChunks; i++) {
+                                    let targetIdx;
+                                    if (remainingDays >= numChunks) {
+                                        targetIdx = dayIdx + i;
+                                    } else {
+                                        targetIdx = dayIdx + Math.floor(i * remainingDays / numChunks);
+                                    }
+                                    if (targetIdx >= daysCount) targetIdx = daysCount - 1;
+                                    const k = toYMD(availableDates[targetIdx]);
+                                    if (!state.plan[k]) state.plan[k] = [];
+                                    const desc = mat.type === 'range' || mat.type === 'vol' ? `${chunks[i].start}〜${chunks[i].end}${unit}` : `C${i+1}`;
+                                    state.plan[k].push({
+                                        sub: exam.subject,
+                                        mat: mat.name,
+                                        desc: desc,
+                                        info: `${mat.rounds}周目`,
+                                        id: mat.id
+                                    });
+                                }
+                            } else {
+                                let lastIdx = daysCount - 1;
+                                const k = toYMD(availableDates[lastIdx]);
+                                for (let i = 0; i < numChunks; i++) {
+                                    const desc = mat.type === 'range' || mat.type === 'vol' ? `${chunks[i].start}〜${chunks[i].end}${unit}` : `C${i+1}`;
+                                    state.plan[k].push({
+                                        sub: exam.subject,
+                                        mat: mat.name,
+                                        desc: desc,
+                                        info: `${mat.rounds}周目`,
+                                        id: mat.id
+                                    });
+                                }
+                            }
+                            return;
+                        }
+                    }
+
+                    if (mat.type === 'list') {
+                        let queue = [];
+                        for (let r = 1; r <= mat.rounds; r++) {
+                            mat.items.forEach(it => { if (it.d < r) queue.push({ l: it.l, r: r }); });
+                        }
+                        // ===== 変更点①：listタイプ：Math.floor＋余りを最終日に積む =====
+                        const perDay = Math.floor(queue.length / daysCount) || 1;
+                        const remainder = queue.length - perDay * daysCount;
+                        let cur = 0;
+                        for (let i = 0; i < daysCount && cur < queue.length; i++) {
+                            const k = toYMD(availableDates[i]);
+                            if (!state.plan[k]) state.plan[k] = [];
+                            // 最終日には余りを上乗せ
+                            const todayCount = (i === daysCount - 1) ? perDay + remainder : perDay;
+                            for (let j = 0; j < todayCount && cur < queue.length; j++) {
+                                if (queue[cur]) {
+                                    const t = queue[cur++];
+                                    state.plan[k].push({ sub: exam.subject, mat: mat.name, desc: t.l, info: `${t.r}周目`, id: mat.id });
+                                }
+                            }
+                        }
+                    } else {
+                        let unitsPerRound = (mat.type === 'range' ? (mat.end - mat.start + 1) : mat.total);
+                        if (!mat.doneRounds) mat.doneRounds = new Array(mat.rounds).fill(0);
+
+                        let queue = [];
+                        for (let r=0; r<mat.rounds; r++) {
+                            let rem = unitsPerRound - (mat.doneRounds[r] || 0);
+                            if (rem > 0) {
+                                queue.push({ r: r+1, start: mat.type === 'range' ? (mat.start + (mat.doneRounds[r]||0)) : null, rem });
+                            }
+                        }
+
+                        let totalRem = queue.reduce((sum, q) => sum + q.rem, 0);
+                        if (totalRem > 0) {
+                            // ===== 変更点①：Math.floor＋余りを最終日に積む =====
+                            const perDay = Math.floor(totalRem / daysCount) || 1;
+                            const remainder = totalRem - perDay * daysCount;
+                            let qIdx = 0;
+                            for (let i = 0; i < daysCount && qIdx < queue.length; i++) {
+                                const k = toYMD(availableDates[i]);
+                                if (!state.plan[k]) state.plan[k] = [];
+                                // 最終日には余りを上乗せ
+                                let dayRem = (i === daysCount - 1) ? perDay + remainder : perDay;
+                                while (dayRem > 0 && qIdx < queue.length) {
+                                    let q = queue[qIdx];
+                                    let amt = Math.min(dayRem, q.rem);
+                                    let descText = mat.type === 'range' ? `${q.start}〜${q.start + amt - 1}${mat.unit||''}` : `${amt}${mat.unit||''}`;
+                                    if (mat.type === 'range') q.start += amt;
+                                    state.plan[k].push({ sub: exam.subject, mat: mat.name, desc: descText, info: `${q.r}周目`, id: mat.id });
+                                    q.rem -= amt; dayRem -= amt;
+                                    if (q.rem <= 0) qIdx++;
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+            save();
+            document.getElementById('loading').style.display = 'none';
+            playSound(1000, 0.3);
+            switchView('home');
+        } catch (e) {
+            document.getElementById('loading').style.display = 'none';
+            console.error(e);
+            alert('エラーが発生しました');
+        }
+    }, 500);
+}
+
+function updateProg(matId, itIdx, val) {
+    const m = findMat(matId);
+    if (!m) return;
+    if (m.type === 'list') {
+        const r = parseInt(val) || 0;
+        if (itIdx === -1) m.items.forEach(it => it.d = r);
+        else m.items[itIdx].d = r;
+    } else {
+        let parsed = 0;
+        if (m.type === 'range' && typeof val === 'string' && val.match(/\d+[-〜~ー]\d+/)) {
+            let parts = val.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).split(/[-〜~ー]/);
+            parsed = (parseInt(parts[1]) - m.start + 1) || 0;
+        } else {
+            parsed = parseInt(val) || 0;
+        }
+        if (itIdx > 0) {
+            if (!m.doneRounds) m.doneRounds = new Array(m.rounds).fill(0);
+            while(m.doneRounds.length < m.rounds) m.doneRounds.push(0);
+            m.doneRounds[itIdx-1] = Math.max(0, parsed);
+        }
+    }
+    save();
+}
+
+function deleteMat(eId, mId) {
+    if(!confirm('削除しますか？')) return;
+    const e = state.exams.find(ex => ex.id === eId);
+    if (e) e.materials = e.materials.filter(m => m.id !== mId);
+    Object.keys(state.plan).forEach(k => state.plan[k] = state.plan[k].filter(t => t.id !== mId));
+    save();
+}
+
+function findMat(id) {
+    for (let e of state.exams) for (let m of e.materials) if (m.id == id) return m;
+    return null;
+}
+
+function render() {
+    const today = toYMD(new Date()); 
+    const hasPlan = Object.keys(state.plan).length > 0;
+    document.getElementById('main-plan-btn').innerText = hasPlan ? '⚡ 進捗状況を解析し、AIが計画を再構築' : '✨ AI学習計画を新規生成する';
+
+    let tAll = 0, tDone = 0;
+    state.exams.forEach(e => e.materials.forEach(m => {
+        if (m.type === 'list') { 
+            tAll += m.items.length * m.rounds; 
+            tDone += m.items.reduce((s,i)=>s+i.d, 0); 
+        } else { 
+            let units = (m.type==='range'?(m.end-m.start+1):m.total);
+            tAll += units * m.rounds; 
+            tDone += (m.doneRounds || []).reduce((a,b)=>a+b, 0);
+        }
+    }));
+    document.getElementById('stat-progress').innerText = Math.floor((tDone/(tAll||1))*100) + '%';
+    
+    if (state.exams.length) {
+        const dates = state.exams.map(e => new Date(e.date));
+        const diff = Math.ceil((Math.min(...dates) - new Date().setHours(0,0,0,0)) / 86400000);
+        document.getElementById('stat-days').innerText = Math.max(0, diff) + '日';
+    }
+
+    const tasks = state.plan[today] || [];
+    document.getElementById('today-list').innerHTML = tasks.length ? tasks.map(t => `<div class="item-row"><div><small>${t.sub}</small><br><b>${t.mat}: ${t.desc}</b></div><span class="status-tag">${t.info}</span></div>`).join('') : '<p style="text-align:center; opacity:0.5;">予定なし</p>';
+
+    // ===== 変更点②：登録済み教材に編集機能を追加 =====
+    const DAY_LABELS = ['日','月','火','水','木','金','土'];
+    document.getElementById('registered-list').innerHTML = state.exams.map(e => e.materials.map(m => {
+        const spacedLabel = m.spaced
+            ? '<span style="font-size:0.65rem; background:linear-gradient(135deg,rgba(188,0,255,0.2),rgba(0,242,255,0.2)); border:1px solid rgba(188,0,255,0.5); color:#bc00ff; padding:1px 6px; border-radius:4px; margin-left:6px;">⚡ 間隔反復</span>'
+            : '<span style="font-size:0.65rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:#64748b; padding:1px 6px; border-radius:4px; margin-left:6px;">通常学習</span>';
+
+        // 現在の曜日チェックボックスHTML
+        const daysHtml = [1,2,3,4,5,6,0].map(d => {
+            const checked = (m.days && m.days.includes(d)) ? 'checked' : '';
+            return `<label><input type="checkbox" value="${d}" ${checked}>${DAY_LABELS[d]}</label>`;
+        }).join('');
+
+        // 間隔反復チェック（listタイプは無効化）
+        const spacedChecked = m.spaced ? 'checked' : '';
+        const spacedDisabled = m.type === 'list' ? 'disabled' : '';
+        const spacedEditHtml = `
+            <div class="mat-edit-spaced-row">
+                <input type="checkbox" id="edit-spaced-${m.id}" ${spacedChecked} ${spacedDisabled}>
+                <span>⚡ 間隔反復学習${m.type === 'list' ? '（リスト教材は非対応）' : ''}</span>
+            </div>`;
+
+        // 編集パネルHTML
+        const editPanel = `
+            <div class="mat-edit-panel" id="mat-edit-panel-${m.id}" style="display:none;">
+                <label>目標周回数</label>
+                <input type="number" id="edit-rounds-${m.id}" value="${m.rounds}" min="1" style="width:80px;">
+                <label style="margin-top:4px;">学習する曜日</label>
+                <div class="edit-days-group" id="edit-days-${m.id}">${daysHtml}</div>
+                ${m.type !== 'list' ? spacedEditHtml : ''}
+                <button class="mat-edit-save-btn" onclick="saveMatEdit(${e.id}, ${m.id})">✔ 保存</button>
+            </div>`;
+
+        return `<div class="item-row" style="align-items:flex-start; flex-direction:column; gap:6px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                <div>
+                    <small>${e.subject}</small><br>
+                    <b>${m.name}</b>${spacedLabel}<br>
+                    <span style="font-size:0.72rem; color:#64748b; margin-top:3px; display:inline-block;">📅 試験日: ${e.date}　|　🔁 ${m.rounds}周</span>
+                </div>
+                <div style="display:flex; gap:6px; flex-shrink:0;">
+                    <button class="secondary" onclick="toggleMatEdit(${e.id}, ${m.id})" style="width:auto; padding:6px 12px; font-size:0.78rem; margin:0;">✎ 編集</button>
+                    <button class="danger" onclick="deleteMat(${e.id}, ${m.id})">削除</button>
+                </div>
+            </div>
+            ${editPanel}
+        </div>`;
+    }).join('')).join('') || '<p style="opacity:0.5;">登録なし</p>';
+
+    document.getElementById('progress-input-area').innerHTML = state.exams.map(e => e.materials.map(m => {
+        if (m.type === 'list') {
+            return `<div class="glass-card"><h3>${m.name}</h3><div class="item-row"><span>一括</span><input type="number" onchange="updateProg(${m.id},-1,this.value)" style="width:80px;"><span>周</span></div>${m.items.map((it, idx) => `<div class="item-row"><span>${it.l}</span><input type="number" value="${it.d}" onchange="updateProg(${m.id},${idx},this.value)" style="width:60px;"></div>`).join('')}</div>`;
+        } else {
+            let drs = m.doneRounds || new Array(m.rounds).fill(0);
+            let infoText = m.type === 'range' ? `全体範囲: ${m.start}〜${m.end}` : `全体量: ${m.total}`;
+            return `<div class="glass-card"><h3>${m.name}</h3>
+                <div style="font-size: 0.8rem; color: #a0aec0; margin-bottom: 8px;">${infoText} ${m.unit||''}</div>
+                ${drs.map((dr, idx) => {
+                    let val = dr;
+                    if(m.type === 'range' && dr > 0) val = `${m.start}-${m.start + dr - 1}`;
+                    return `<div class="item-row"><span>${idx+1}周目</span><input type="${m.type==='range'?'text':'number'}" value="${val}" onchange="updateProg(${m.id},${idx+1},this.value)" style="width:100px;"><span>${m.type==='range'?'':(m.unit||'')}</span></div>`
+                }).join('')}</div>`;
+        }
+    }).join('')).join('') || '<p style="opacity:0.5;">登録なし</p>';
+
+    let planHtml = '';
+    Object.keys(state.plan).sort().forEach(d => {
+        planHtml += `<h4 style="color:var(--accent); border-bottom:1px solid #333; margin-bottom:10px; margin-top:20px;">${d}</h4>`;
+        state.plan[d].forEach((t, idx) => {
+            const content = isPlanEditing ? `<input type="text" class="plan-edit-input" value="${t.desc}" oninput="updatePlanManual('${d}', ${idx}, this.value)">` : `<b>${t.mat}: ${t.desc}</b>`;
+            planHtml += `<div class="item-row"><div style="flex: 1;"><small>${t.sub}</small><br>${content}</div><span class="status-tag">${t.info}</span></div>`;
+        });
+    });
+    document.getElementById('full-plan-area').innerHTML = planHtml || '<p style="opacity:0.5;">計画がありません</p>';
+}
+
+window.onload = () => {
+    load();
+    document.getElementById('sys-start-date').value = toYMD(new Date());
+    toggleMode();
+    render();
+    if (!localStorage.getItem('rtw_tut_done')) {
+        setTimeout(showTutorial, 400);
+    }
+    if ('serviceWorker' in navigator) {
+        const sw = "self.addEventListener('install',e=>e.waitUntil(self.skipWaiting()));self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('fetch',e=>{});";
+        navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw], {type: 'application/javascript'}))).catch(()=>{});
+    }
+};
+
+window.addEventListener('beforeunload', save);
+window.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(); });
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
