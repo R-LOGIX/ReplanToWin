@@ -347,24 +347,28 @@
             </div>
         </div>
 
+        <label style="font-size: 0.8rem; color: var(--accent); display: block; margin-bottom: 5px;">教材のタイプ（どうやって進めるか？）：</label>
         <select id="in-mode" onchange="toggleMode()">
-            <option value="range">ページ範囲 (1-200 または 6-17,20-30 など)</option>
-            <option value="vol">合計件数 (1500語 など)</option>
-            <option value="list">項目リスト (プリントAなど)</option>
+            <option value="range">📖 連続したページや番号で進める (例: 1-50, 10-20,30-40)</option>
+            <option value="vol">🔢 全体の数で進める (例: 合計500問、1000語)</option>
+            <option value="list">📝 リストで指定する (例: プリントA, プリントB)</option>
         </select>
+        <!-- 「単位」についての説明（計画表の見え方に影響することを説明） -->
+        <p style="font-size: 0.75rem; color: #a0aec0; margin-bottom: 12px; margin-top: -6px;">※「単位」を入力すると、計画表に「10〜20ページ」「30問」のように分かりやすく表示されます。</p>
+        
         <div id="ui-range">
-            <input id="in-name-range" placeholder="教材名">
-            <input id="in-val-range" placeholder="範囲 (例: 1-150 または 10-20,30-45)">
-            <input id="in-unit-range" value="P" placeholder="単位">
+            <input id="in-name-range" placeholder="教材名 (例: 数学ワーク)">
+            <input id="in-val-range" placeholder="やる範囲 (例: 1-100 または 10-20,30-50)">
+            <input id="in-unit-range" value="ページ" placeholder="単位（計画表に付きます 例: ページ, 問）">
         </div>
         <div id="ui-vol" style="display:none;">
-            <input id="in-name-vol" placeholder="教材名">
-            <input id="in-val-vol" type="number" placeholder="合計件数">
-            <input id="in-unit-vol" value="語" placeholder="単位">
+            <input id="in-name-vol" placeholder="教材名 (例: 英単語ターゲット)">
+            <input id="in-val-vol" type="number" placeholder="全体の数 (例: 1000)">
+            <input id="in-unit-vol" value="個" placeholder="単位（計画表に付きます 例: 個, 語）">
         </div>
         <div id="ui-list" style="display:none;">
-            <input id="in-name-list" placeholder="教材名">
-            <textarea id="in-val-list" placeholder="項目をカンマ(,)で区切って入力" rows="3"></textarea>
+            <input id="in-name-list" placeholder="教材名 (例: 対策プリント)">
+            <textarea id="in-val-list" placeholder="やる項目を「, (カンマ)」で区切って入力&#10;例: プリント1, プリント2, 過去問" rows="3"></textarea>
         </div>
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
             <span>目標周回数:</span>
@@ -375,11 +379,11 @@
         <label id="spaced-label" class="spaced-badge" style="margin-bottom: 15px;">
             <input type="checkbox" id="in-spaced">
             <span class="spaced-badge-text">
-                <span class="spaced-badge-title">⚡ 間隔反復学習（スペーシング効果）</span>
-                <span class="spaced-badge-sub">「小刻みな復習」を繰り返す記憶定着アルゴリズム。<br><b>単語帳・問題集など量の多いタスクに特に推奨。</b><br>単純繰り返しより最大 <b>2〜3倍</b> の記憶効率を実現。</span>
+                <span class="spaced-badge-title">⚡ AI忘却防止メソッド（間隔反復）</span>
+                <span class="spaced-badge-sub">小刻みに復習を繰り返して<b>「絶対に忘れない記憶」</b>を作るAIの学習法です。<br><b>英単語や漢字、暗記科目にピッタリ！</b><br>普通の勉強法より <b>2〜3倍</b> 長く記憶に定着します。</span>
             </span>
-            <span class="spaced-badge-recommend">強く推奨</span>
-            <span id="spaced-note" style="display: none; color: var(--danger); font-size: 0.7rem;">※リスト教材では非対応</span>
+            <span class="spaced-badge-recommend">おすすめ！</span>
+            <span id="spaced-note" style="display: none; color: var(--danger); font-size: 0.7rem;">※リスト形式では使えません</span>
         </label>
         <!-- ▲▲▲ 変更点2 ここまで ▲▲▲ -->
 
@@ -425,44 +429,42 @@ const TUT_STEPS = [
     {
         icon: '🚀',
         title: 'ReplanToWin へようこそ！',
-        body: `AI が学習スケジュールを自動生成するアプリです。<br><br>
-<b>基本の流れ：</b><br>
-① <b>教材を登録</b> する（科目・範囲・試験日）<br>
-② <b>AI が計画を生成</b> する<br>
-③ <b>毎日の進捗</b> を記録する<br>
-④ AI が<b>計画を自動更新</b> する`
+        body: `目標から逆算して、AIが最適な学習スケジュールを自動で作ってくれるアプリです。<br><br>
+<b>使い方の流れ：</b><br>
+① 教科や範囲、テストの日などを<b>登録</b>する<br>
+② <b>AIが計画を自動作成！</b><br>
+③ <b>毎日どこまで進んだか</b> を入力する<br>
+④ もし遅れてしまっても、AIが<b>何度でも計画を作り直して</b>ペースを調整してくれます！`
     },
     {
         icon: '📖',
         title: 'STEP 1 ── 教材を登録する',
-        body: `「<b>1. 教材登録</b>」タブへ移動します。<br><br>
-・ <b>科目名</b>（例: 英語）と<b>試験日</b>を入力<br>
-・ <b>教材の種類</b>を選択：<br>
-　　<b>ページ範囲</b>（例: 1-200P または 6-17,20-30P）<br>
-　　<b>合計件数</b>（例: 1500語）<br>
-　　<b>項目リスト</b>（例: 単語帳の項目）<br>
-・ <b>学習する曜日</b>と<b>目標周回数</b>を設定<br><br>
-⚡ <b>間隔反復学習</b>は記憶効率が大幅に上がるため<b>強く推奨</b>です！`
+        body: `「<b>1. 教材登録</b>」タブに移動します。<br><br>
+・ <b>科目名</b>（数学など）と<b>目標日（テストの日など）</b>を入力<br>
+・ <b>教材のタイプ</b>を選びます：<br>
+　　<b>ページや番号</b>（例: 1-50、10-15,30-40）<br>
+　　<b>全体の数</b>（例: 全部で500問）<br>
+　　<b>リスト</b>（例: プリントA, プリントB）<br>
+※「単位」を入力しておくと、計画表が「〜ページ」「〜問」と分かりやすくなります。<br><br>
+⚡ <b>AI忘却防止メソッド</b>をオンにすると、記憶の定着率がグッと上がるので<b>おすすめ</b>です！`
     },
     {
         icon: '✨',
-        title: 'STEP 2 ── AI 計画を生成する',
+        title: 'STEP 2 ── AI に計画を作ってもらう',
         body: `教材を登録したら、<b>ホーム画面</b>へ戻ります。<br><br>
-・ <b>「計画再開/開始日」</b>を確認（デフォルトは今日）<br>
-・ <b>「AI学習計画を生成する」</b>ボタンを押す<br><br>
-AI が試験日から逆算し、全日程のスケジュールを自動生成します。<br><br>
-進捗を記録した後に<b>再生成</b>すると、残り分だけ再スケジューリングされます。`
+・ <b>「AI学習計画を新しく作る」</b>ボタンを押すだけ！<br><br>
+AIがテストの日から逆算して、毎日のスケジュールを自動で作成します。<br><br>
+勉強が進んだら「進捗入力」タブで記録をつけてみましょう。予定より遅れてしまっても、もう一度<b>「今の進捗に合わせて計画を作り直す」</b>ボタンを押せば、残りの日程でAIがピッタリ再計算してくれます。`
     },
     {
         icon: '📅',
-        title: 'STEP 3 ── Google カレンダーに取り込む',
-        body: `<b>「3. 計画表」</b>タブまたはホームの<b>「ICSエクスポート」</b>ボタンで<br>計画を <b>.ics ファイル</b>としてダウンロードできます。<br><br>
-<b>Google カレンダーへの取り込み手順：</b><br>
-① Google カレンダーを開く<br>
-② 設定 → 「インポート」を選択<br>
-③ ダウンロードした .ics ファイルを選択<br>
-④ 各学習タスクが<b>終日イベント</b>として追加されます。<br><br>
-進捗を記録して計画を更新したら、再度エクスポートしてください。`
+        title: 'STEP 3 ── カレンダーアプリと連携',
+        body: `<b>「3. 計画表」</b>タブまたはホームの<b>「ICSエクスポート」</b>ボタンで、計画を <b>カレンダー用ファイル（.ics）</b>としてダウンロードできます。<br><br>
+<b>Googleカレンダー等への取り込み手順：</b><br>
+① Googleカレンダー等の設定から「インポート」を選択<br>
+② ダウンロードしたファイルを選択<br>
+③ 毎日の学習タスクが<b>終日の予定</b>として追加されます。<br><br>
+計画を作り直したときは、もう一度エクスポートして上書きしましょう。`
     }
 ];
 let tutStep = 0;
@@ -537,12 +539,19 @@ function exportICS() {
         const tasks = state.plan[dateStr];
         if (!tasks || tasks.length === 0) return;
         const dateICS = toICSDate(dateStr);
+        
+        // Google Calendar requires DTEND to be the next day for all-day events
+        const [y, m, d] = dateStr.split('-');
+        const dateObj = new Date(y, m - 1, d);
+        dateObj.setDate(dateObj.getDate() + 1);
+        const dateICSEnd = dateObj.getFullYear() + String(dateObj.getMonth() + 1).padStart(2, '0') + String(dateObj.getDate()).padStart(2, '0');
+
         const summary = tasks.map(t => `${t.sub}:${t.mat} ${t.desc}(${t.info})`).join(' / ');
         const uid = `rtw-${dateStr}-${Date.now()}@replantowin`;
         ics = ics.concat([
             'BEGIN:VEVENT',
             `DTSTART;VALUE=DATE:${dateICS}`,
-            `DTEND;VALUE=DATE:${dateICS}`,
+            `DTEND;VALUE=DATE:${dateICSEnd}`,
             `DTSTAMP:${dtstamp}`,
             `UID:${uid}`,
             `SUMMARY:${escICS(summary)}`,
@@ -1062,7 +1071,9 @@ function findMat(id) {
 function render() {
     const today = toYMD(new Date()); 
     const hasPlan = Object.keys(state.plan).length > 0;
-    document.getElementById('main-plan-btn').innerText = hasPlan ? '⚡ 進捗状況を解析し、AIが計画を再構築' : '✨ AI学習計画を新規生成する';
+    document.getElementById('main-plan-btn').innerHTML = hasPlan 
+        ? '⚡ <b>今の進捗に合わせて、AIに計画を作り直してもらう</b><br><span style="font-size:0.75rem;font-weight:normal;">(遅れていてもAIが自動でペースを再計算します)</span>' 
+        : '✨ AI学習計画を新しく作る';
 
     let tAll = 0, tDone = 0;
     state.exams.forEach(e => e.materials.forEach(m => {
@@ -1090,8 +1101,8 @@ function render() {
     const DAY_LABELS = ['日','月','火','水','木','金','土'];
     document.getElementById('registered-list').innerHTML = state.exams.map(e => e.materials.map(m => {
         const spacedLabel = m.spaced
-            ? '<span style="font-size:0.65rem; background:linear-gradient(135deg,rgba(188,0,255,0.2),rgba(0,242,255,0.2)); border:1px solid rgba(188,0,255,0.5); color:#bc00ff; padding:1px 6px; border-radius:4px; margin-left:6px;">⚡ 間隔反復</span>'
-            : '<span style="font-size:0.65rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:#64748b; padding:1px 6px; border-radius:4px; margin-left:6px;">通常学習</span>';
+            ? '<span style="font-size:0.65rem; background:linear-gradient(135deg,rgba(188,0,255,0.2),rgba(0,242,255,0.2)); border:1px solid rgba(188,0,255,0.5); color:#bc00ff; padding:1px 6px; border-radius:4px; margin-left:6px;">⚡ AI忘却防止</span>'
+            : '<span style="font-size:0.65rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:#64748b; padding:1px 6px; border-radius:4px; margin-left:6px;">通常の学習</span>';
 
         // 現在の曜日チェックボックスHTML
         const daysHtml = [1,2,3,4,5,6,0].map(d => {
@@ -1105,7 +1116,7 @@ function render() {
         const spacedEditHtml = `
             <div class="mat-edit-spaced-row">
                 <input type="checkbox" id="edit-spaced-${m.id}" ${spacedChecked} ${spacedDisabled}>
-                <span>⚡ 間隔反復学習${m.type === 'list' ? '（リスト教材は非対応）' : ''}</span>
+                <span>⚡ AI忘却防止メソッド${m.type === 'list' ? '（リスト形式では使えません）' : ''}</span>
             </div>`;
 
         // 編集パネルHTML
