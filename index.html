@@ -348,13 +348,13 @@
         </div>
 
         <select id="in-mode" onchange="toggleMode()">
-            <option value="range">ページ範囲 (1-200 など)</option>
+            <option value="range">ページ範囲 (1-200 または 6-17,20-30 など)</option>
             <option value="vol">合計件数 (1500語 など)</option>
             <option value="list">項目リスト (プリントAなど)</option>
         </select>
         <div id="ui-range">
             <input id="in-name-range" placeholder="教材名">
-            <input id="in-val-range" placeholder="範囲 (例: 1-150)">
+            <input id="in-val-range" placeholder="範囲 (例: 1-150 または 10-20,30-45)">
             <input id="in-unit-range" value="P" placeholder="単位">
         </div>
         <div id="ui-vol" style="display:none;">
@@ -438,7 +438,7 @@ const TUT_STEPS = [
         body: `「<b>1. 教材登録</b>」タブへ移動します。<br><br>
 ・ <b>科目名</b>（例: 英語）と<b>試験日</b>を入力<br>
 ・ <b>教材の種類</b>を選択：<br>
-　　<b>ページ範囲</b>（例: 1-200P）<br>
+　　<b>ページ範囲</b>（例: 1-200P または 6-17,20-30P）<br>
 　　<b>合計件数</b>（例: 1500語）<br>
 　　<b>項目リスト</b>（例: 単語帳の項目）<br>
 ・ <b>学習する曜日</b>と<b>目標周回数</b>を設定<br><br>
@@ -619,6 +619,47 @@ function playSound(f, d) {
 }
 
 // --- HELPER ---
+function getRangeDescList(mat, startIndex, length) {
+    let rs = mat.ranges || [{start: mat.start, end: mat.end}];
+    let currentIdx = 0;
+    let res = [];
+    let rem = length;
+    for (let r of rs) {
+        let rLen = r.end - r.start + 1;
+        if (currentIdx + rLen <= startIndex) {
+            currentIdx += rLen;
+            continue;
+        }
+        let offset = Math.max(0, startIndex - currentIdx);
+        let avail = rLen - offset;
+        let use = Math.min(rem, avail);
+        let startPage = r.start + offset;
+        let endPage = startPage + use - 1;
+        if (startPage === endPage) {
+            res.push(`${startPage}`);
+        } else {
+            res.push(`${startPage}〜${endPage}`);
+        }
+        rem -= use;
+        currentIdx += rLen;
+        if (rem <= 0) break;
+    }
+    return res.join(',');
+}
+
+function getRangeIndex(mat, endPage) {
+    let rs = mat.ranges || [{start: mat.start, end: mat.end}];
+    let currentIdx = 0;
+    for (let r of rs) {
+        if (endPage >= r.start && endPage <= r.end) {
+            return currentIdx + (endPage - r.start + 1);
+        } else if (endPage > r.end) {
+            currentIdx += (r.end - r.start + 1);
+        }
+    }
+    return currentIdx;
+}
+
 function toYMD(d) {
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
@@ -775,9 +816,17 @@ function addMaterial() {
     if (mode === 'range') {
         let val = document.getElementById('in-val-range').value;
         val = val.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/\s+/g, '');
-        const m = val.match(/^(\d+)[-〜~ー](\d+)$/);
-        if (!m) return alert('範囲は 1-100 の形式で入力してください');
-        newMat = { ...common, type: 'range', name: document.getElementById('in-name-range').value || '教材', start: parseInt(m[1]), end: parseInt(m[2]), doneRounds: new Array(rounds).fill(0), unit: document.getElementById('in-unit-range').value, spaced };
+        let parts = val.split(',');
+        let customRanges = [];
+        for (let p of parts) {
+            let m = p.match(/^(\d+)([-〜~ー](\d+))?$/);
+            if (!m) return alert('範囲は 1-100 または 1-10,20-30 の形式で入力してください');
+            let s = parseInt(m[1]);
+            let e = m[3] ? parseInt(m[3]) : s;
+            if (s > e) { let t = s; s = e; e = t; }
+            customRanges.push({start: s, end: e});
+        }
+        newMat = { ...common, type: 'range', name: document.getElementById('in-name-range').value || '教材', start: customRanges[0].start, end: customRanges[customRanges.length-1].end, ranges: customRanges, doneRounds: new Array(rounds).fill(0), unit: document.getElementById('in-unit-range').value, spaced };
     } else if (mode === 'vol') {
         let val = document.getElementById('in-val-vol').value.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
         const total = parseInt(val);
@@ -827,7 +876,8 @@ function generatePlan() {
                     const daysCount = availableDates.length;
 
                     if (mat.spaced && mat.type !== 'list') {
-                        const totalUnits = mat.type === 'range' ? (mat.end - mat.start + 1) : mat.total;
+                        const rs = mat.ranges || [{start: mat.start, end: mat.end}];
+                        const totalUnits = mat.type === 'range' ? rs.reduce((s, r) => s + (r.end - r.start + 1), 0) : mat.total;
                         const totalAmount = totalUnits * mat.rounds;
                         const avgDaily = totalAmount / daysCount;
                         let chunkSize = Math.ceil(avgDaily);
@@ -838,15 +888,9 @@ function generatePlan() {
                             let chunks = [];
                             let unit = mat.unit || '';
                             for (let i = 0; i < numChunks; i++) {
-                                let start, end;
-                                if (mat.type === 'range') {
-                                    start = mat.start + i * chunkSize;
-                                    end = Math.min(mat.start + (i + 1) * chunkSize - 1, mat.end);
-                                } else {
-                                    start = i * chunkSize + 1;
-                                    end = Math.min((i + 1) * chunkSize, mat.total);
-                                }
-                                chunks.push({ start, end });
+                                let cStart = i * chunkSize;
+                                let cLength = Math.min(chunkSize, totalUnits - cStart);
+                                chunks.push({ cStart, cLength });
                             }
 
                             let dayIdx = 0;
@@ -856,7 +900,7 @@ function generatePlan() {
                                     if (dayIdx >= daysCount) break;
                                     const k = toYMD(availableDates[dayIdx]);
                                     if (!state.plan[k]) state.plan[k] = [];
-                                    const desc = mat.type === 'range' || mat.type === 'vol' ? `${chunks[i].start}〜${chunks[i].end}${unit}` : `C${i+1}`;
+                                    const desc = mat.type === 'range' ? `${getRangeDescList(mat, chunks[i].cStart, chunks[i].cLength)}${unit}` : (mat.type === 'vol' ? `${chunks[i].cStart+1}〜${chunks[i].cStart+chunks[i].cLength}${unit}` : `C${i+1}`);
                                     state.plan[k].push({
                                         sub: exam.subject,
                                         mat: mat.name,
@@ -880,7 +924,7 @@ function generatePlan() {
                                     if (targetIdx >= daysCount) targetIdx = daysCount - 1;
                                     const k = toYMD(availableDates[targetIdx]);
                                     if (!state.plan[k]) state.plan[k] = [];
-                                    const desc = mat.type === 'range' || mat.type === 'vol' ? `${chunks[i].start}〜${chunks[i].end}${unit}` : `C${i+1}`;
+                                    const desc = mat.type === 'range' ? `${getRangeDescList(mat, chunks[i].cStart, chunks[i].cLength)}${unit}` : (mat.type === 'vol' ? `${chunks[i].cStart+1}〜${chunks[i].cStart+chunks[i].cLength}${unit}` : `C${i+1}`);
                                     state.plan[k].push({
                                         sub: exam.subject,
                                         mat: mat.name,
@@ -893,7 +937,7 @@ function generatePlan() {
                                 let lastIdx = daysCount - 1;
                                 const k = toYMD(availableDates[lastIdx]);
                                 for (let i = 0; i < numChunks; i++) {
-                                    const desc = mat.type === 'range' || mat.type === 'vol' ? `${chunks[i].start}〜${chunks[i].end}${unit}` : `C${i+1}`;
+                                    const desc = mat.type === 'range' ? `${getRangeDescList(mat, chunks[i].cStart, chunks[i].cLength)}${unit}` : (mat.type === 'vol' ? `${chunks[i].cStart+1}〜${chunks[i].cStart+chunks[i].cLength}${unit}` : `C${i+1}`);
                                     state.plan[k].push({
                                         sub: exam.subject,
                                         mat: mat.name,
@@ -929,14 +973,15 @@ function generatePlan() {
                             }
                         }
                     } else {
-                        let unitsPerRound = (mat.type === 'range' ? (mat.end - mat.start + 1) : mat.total);
+                        const rs = mat.ranges || [{start: mat.start, end: mat.end}];
+                        let unitsPerRound = (mat.type === 'range' ? rs.reduce((s, r) => s + (r.end - r.start + 1), 0) : mat.total);
                         if (!mat.doneRounds) mat.doneRounds = new Array(mat.rounds).fill(0);
 
                         let queue = [];
                         for (let r=0; r<mat.rounds; r++) {
                             let rem = unitsPerRound - (mat.doneRounds[r] || 0);
                             if (rem > 0) {
-                                queue.push({ r: r+1, start: mat.type === 'range' ? (mat.start + (mat.doneRounds[r]||0)) : null, rem });
+                                queue.push({ r: r+1, start: (mat.doneRounds[r]||0), rem });
                             }
                         }
 
@@ -954,7 +999,7 @@ function generatePlan() {
                                 while (dayRem > 0 && qIdx < queue.length) {
                                     let q = queue[qIdx];
                                     let amt = Math.min(dayRem, q.rem);
-                                    let descText = mat.type === 'range' ? `${q.start}〜${q.start + amt - 1}${mat.unit||''}` : `${amt}${mat.unit||''}`;
+                                    let descText = mat.type === 'range' ? `${getRangeDescList(mat, q.start, amt)}${mat.unit||''}` : `${amt}${mat.unit||''}`;
                                     if (mat.type === 'range') q.start += amt;
                                     state.plan[k].push({ sub: exam.subject, mat: mat.name, desc: descText, info: `${q.r}周目`, id: mat.id });
                                     q.rem -= amt; dayRem -= amt;
@@ -988,7 +1033,7 @@ function updateProg(matId, itIdx, val) {
         let parsed = 0;
         if (m.type === 'range' && typeof val === 'string' && val.match(/\d+[-〜~ー]\d+/)) {
             let parts = val.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).split(/[-〜~ー]/);
-            parsed = (parseInt(parts[1]) - m.start + 1) || 0;
+            parsed = getRangeIndex(m, parseInt(parts[1]));
         } else {
             parsed = parseInt(val) || 0;
         }
@@ -1025,7 +1070,7 @@ function render() {
             tAll += m.items.length * m.rounds; 
             tDone += m.items.reduce((s,i)=>s+i.d, 0); 
         } else { 
-            let units = (m.type==='range'?(m.end-m.start+1):m.total);
+            let units = (m.type==='range'?(m.ranges?m.ranges.reduce((s,r)=>s+(r.end-r.start+1),0):(m.end-m.start+1)):m.total);
             tAll += units * m.rounds; 
             tDone += (m.doneRounds || []).reduce((a,b)=>a+b, 0);
         }
@@ -1095,12 +1140,12 @@ function render() {
             return `<div class="glass-card"><h3>${m.name}</h3><div class="item-row"><span>一括</span><input type="number" onchange="updateProg(${m.id},-1,this.value)" style="width:80px;"><span>周</span></div>${m.items.map((it, idx) => `<div class="item-row"><span>${it.l}</span><input type="number" value="${it.d}" onchange="updateProg(${m.id},${idx},this.value)" style="width:60px;"></div>`).join('')}</div>`;
         } else {
             let drs = m.doneRounds || new Array(m.rounds).fill(0);
-            let infoText = m.type === 'range' ? `全体範囲: ${m.start}〜${m.end}` : `全体量: ${m.total}`;
+            let infoText = m.type === 'range' ? `全体範囲: ${m.ranges?m.ranges.map(r=>r.start===r.end?r.start:r.start+'〜'+r.end).join(','):(m.start+'〜'+m.end)}` : `全体量: ${m.total}`;
             return `<div class="glass-card"><h3>${m.name}</h3>
                 <div style="font-size: 0.8rem; color: #a0aec0; margin-bottom: 8px;">${infoText} ${m.unit||''}</div>
                 ${drs.map((dr, idx) => {
                     let val = dr;
-                    if(m.type === 'range' && dr > 0) val = `${m.start}-${m.start + dr - 1}`;
+                    if(m.type === 'range' && dr > 0) val = getRangeDescList(m, 0, dr);
                     return `<div class="item-row"><span>${idx+1}周目</span><input type="${m.type==='range'?'text':'number'}" value="${val}" onchange="updateProg(${m.id},${idx+1},this.value)" style="width:100px;"><span>${m.type==='range'?'':(m.unit||'')}</span></div>`
                 }).join('')}</div>`;
         }
