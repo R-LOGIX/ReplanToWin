@@ -397,22 +397,13 @@
             <input id="in-name-list" placeholder="教材名 (例: 対策プリント)">
             <textarea id="in-val-list" placeholder="やる項目を「, (カンマ)」で区切って入力&#10;例: プリント1, プリント2, 過去問" rows="3"></textarea>
         </div>
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
             <span>目標周回数:</span>
             <input id="in-rounds" type="number" value="3" style="width: 80px; margin: 0;">
         </div>
-
-        <!-- ▼▼▼ 変更点2: 間隔反復学習バッジの説明文 ▼▼▼ -->
-        <label id="spaced-label" class="spaced-badge" style="margin-bottom: 15px;">
-            <input type="checkbox" id="in-spaced">
-            <span class="spaced-badge-text">
-                <span class="spaced-badge-title" style="display:flex; align-items:center;">⚡ AI忘却防止メソッド <span class="help-btn" onclick="openHelp('spaced'); event.preventDefault();">?</span></span>
-                <span class="spaced-badge-sub">小刻みに復習を繰り返して<b>絶対に忘れない記憶</b>を作る学習法です。<br><b>英単語やテスト勉強にピッタリ！</b></span>
-            </span>
-            <span class="spaced-badge-recommend">おすすめ！</span>
-            <span id="spaced-note" style="display: none; color: var(--danger); font-size: 0.7rem;">※リスト形式では使えません</span>
-        </label>
-        <!-- ▲▲▲ 変更点2 ここまで ▲▲▲ -->
+        <p style="font-size: 0.75rem; color: #bc00ff; margin-bottom: 15px; margin-top: 0;">
+            ⚡ 2周以上に設定すると、自動で記憶定着に最適なスケジュール（1周目が終わる前に2周目が始まる短期復習仕様）が組み込まれます！
+        </p>
 
         <button onclick="addMaterial()">この教材をリストに登録する</button>
     </div>
@@ -485,11 +476,11 @@ const TUT_STEPS = [
         body: `「<b>1. 教材登録</b>」タブに移動します。<br><br>
 ・ <b>科目名</b>（数学など）と<b>目標日（テストの日など）</b>を入力<br>
 ・ <b>教材のタイプ</b>を選びます：<br>
-　　<b>ページや番号</b>（例: 1-50、10-15,30-40）<br>
-　　<b>全体の数</b>（例: 全部で500問）<br>
-　　<b>リスト</b>（例: プリントA, プリントB）<br>
+　　<b>ページの範囲</b>（例: 1-50、10-15,30-40）<br>
+　　<b>全体の数（量）</b>（例: 全部で500問）<br>
+　　<b>リスト・プリント類</b>（例: プリントA, プリントB）<br>
 ※「単位」を入力しておくと、計画表が「〜ページ」「〜問」と分かりやすくなります。<br><br>
-⚡ <b>AI忘却防止メソッド</b>をオンにすると、記憶の定着率がグッと上がるので<b>おすすめ</b>です！`
+⚡ 周回数を2周以上にすると、忘却を防ぐ<b>短期復習スケジュール</b>が自動で発動します！`
     },
     {
         icon: '✨',
@@ -553,7 +544,7 @@ function renderTut() {
 const HELP_TEXTS = {
     'spaced': {
         title: '⚡ 1周目が終わる前に2周目が始まる理由',
-        body: '「まだ終わってないのに次の周が始まった！」と思っても<b>大丈夫、それが正解です！</b><br><br>実は、ぜんぶ終わらせてから2周目をやると、<b>最初の方をスッカリ忘れてしまう</b>ことが多いんです。<br><br>だから、完全に忘れてしまう前に次の周が<b>「乱入」</b>してくるようにAIが計算しています。<br>これで「あ、思い出した！」が増えて、絶対に忘れない記憶になります👍'
+        body: '2周以上の設定にすると、自動で短期復習スケジュールになります。<br>「まだ終わってないのに次の周が始まった！」と思っても<b>大丈夫、それが正解です！</b><br><br>ぜんぶ終わらせてから2周目をやると、<b>最初の方をスッカリ忘れてしまう</b>ことが多いんです。<br><br>だから、完全に忘れてしまう前に次の周が<b>「乱入」</b>してくるようにAIが計算しています。<br>これで「あ、思い出した！」が増えて、絶対に忘れない記憶になります👍'
     },
     'replan': {
         title: '📆 サボっちゃっても大丈夫！',
@@ -781,22 +772,6 @@ function toggleMode() {
     document.getElementById('ui-range').style.display = m === 'range' ? 'block' : 'none';
     document.getElementById('ui-vol').style.display = m === 'vol' ? 'block' : 'none';
     document.getElementById('ui-list').style.display = m === 'list' ? 'block' : 'none';
-    updateSpacedUI();
-}
-
-function updateSpacedUI() {
-    const mode = document.getElementById('in-mode').value;
-    const spacedCheck = document.getElementById('in-spaced');
-    const spacedNote = document.getElementById('spaced-note');
-    if (mode === 'list') {
-        spacedCheck.disabled = true;
-        spacedCheck.parentElement.style.opacity = '0.6';
-        if (spacedNote) spacedNote.style.display = 'inline';
-    } else {
-        spacedCheck.disabled = false;
-        spacedCheck.parentElement.style.opacity = '1';
-        if (spacedNote) spacedNote.style.display = 'none';
-    }
 }
 
 function togglePlanEdit() {
@@ -841,12 +816,6 @@ function saveMatEdit(eId, mId) {
     });
     if (newDays.length === 0) { alert('曜日を1つ以上選択してください'); return; }
 
-    // 間隔反復（listタイプは変更不可）
-    let newSpaced = mat.spaced;
-    if (mat.type !== 'list') {
-        newSpaced = document.getElementById(`edit-spaced-${mId}`).checked;
-    }
-
     // 周回数が増えた場合は doneRounds を拡張
     if (mat.type !== 'list') {
         if (!mat.doneRounds) mat.doneRounds = new Array(mat.rounds).fill(0);
@@ -856,13 +825,40 @@ function saveMatEdit(eId, mId) {
 
     mat.rounds = newRounds;
     mat.days = newDays;
-    mat.spaced = newSpaced;
 
     playSound(800, 0.2);
     save();
 }
 
 // --- LOGIC ---
+function completeTask(date, idx) {
+    const t = state.plan[date][idx];
+    if (!t) return;
+    
+    const m = findMat(t.id);
+    if (!m) return;
+    
+    let r = parseInt(t.info) || 1;
+    
+    if (m.type === 'list') {
+        const itIdx = m.items.findIndex(it => it.l === t.desc);
+        if (itIdx !== -1) {
+            updateProg(m.id, itIdx, r);
+        }
+    } else {
+        if (t.targetVal !== undefined) {
+            updateProg(m.id, r, t.targetVal);
+        } else {
+            alert('この機能を使うには、ホーム画面の「今の進捗から、計画を作り直す！」ボタンを一度押してください。');
+            return;
+        }
+    }
+    
+    t.completed = true;
+    playSound(1000, 0.2);
+    save();
+}
+
 function addMaterial() {
     const sub = document.getElementById('in-sub').value.trim();
     const date = document.getElementById('in-date').value;
@@ -892,7 +888,6 @@ function addMaterial() {
 
     let newMat;
     const common = { id: mId, rounds, days: selectedDays };
-    const spaced = document.getElementById('in-spaced').checked && mode !== 'list';
 
     if (mode === 'range') {
         let val = document.getElementById('in-val-range').value;
@@ -907,16 +902,16 @@ function addMaterial() {
             if (s > e) { let t = s; s = e; e = t; }
             customRanges.push({start: s, end: e});
         }
-        newMat = { ...common, type: 'range', name: document.getElementById('in-name-range').value || '教材', start: customRanges[0].start, end: customRanges[customRanges.length-1].end, ranges: customRanges, doneRounds: new Array(rounds).fill(0), unit: document.getElementById('in-unit-range').value, spaced };
+        newMat = { ...common, type: 'range', name: document.getElementById('in-name-range').value || '教材', start: customRanges[0].start, end: customRanges[customRanges.length-1].end, ranges: customRanges, doneRounds: new Array(rounds).fill(0), unit: document.getElementById('in-unit-range').value };
     } else if (mode === 'vol') {
         let val = document.getElementById('in-val-vol').value.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
         const total = parseInt(val);
         if (!total) return alert('合計件数を入力してください');
-        newMat = { ...common, type: 'vol', name: document.getElementById('in-name-vol').value || '教材', total, doneRounds: new Array(rounds).fill(0), unit: document.getElementById('in-unit-vol').value, spaced };
+        newMat = { ...common, type: 'vol', name: document.getElementById('in-name-vol').value || '教材', total, doneRounds: new Array(rounds).fill(0), unit: document.getElementById('in-unit-vol').value };
     } else {
         const items = document.getElementById('in-val-list').value.split(/[,、\n]/).filter(s => s.trim());
         if (items.length === 0) return alert('項目を入力してください');
-        newMat = { ...common, type: 'list', name: document.getElementById('in-name-list').value || '教材', items: items.map(l => ({ l: l.trim(), d: 0 })), spaced: false };
+        newMat = { ...common, type: 'list', name: document.getElementById('in-name-list').value || '教材', items: items.map(l => ({ l: l.trim(), d: 0 })) };
     }
 
     exam.materials.push(newMat);
@@ -956,88 +951,12 @@ function generatePlan() {
                     if (availableDates.length === 0) availableDates.push(new Date(globalStart));
                     const daysCount = availableDates.length;
 
-                    if (mat.spaced && mat.type !== 'list') {
-                        const rs = mat.ranges || [{start: mat.start, end: mat.end}];
-                        const totalUnits = mat.type === 'range' ? rs.reduce((s, r) => s + (r.end - r.start + 1), 0) : mat.total;
-                        const totalAmount = totalUnits * mat.rounds;
-                        const avgDaily = totalAmount / daysCount;
-                        let chunkSize = Math.ceil(avgDaily);
-                        if (chunkSize < 1) chunkSize = 1;
-                        const numChunks = Math.ceil(totalUnits / chunkSize);
-
-                        if (daysCount >= numChunks * (mat.rounds - 1) + 1) {
-                            let chunks = [];
-                            let unit = mat.unit || '';
-                            for (let i = 0; i < numChunks; i++) {
-                                let cStart = i * chunkSize;
-                                let cLength = Math.min(chunkSize, totalUnits - cStart);
-                                chunks.push({ cStart, cLength });
-                            }
-
-                            let dayIdx = 0;
-
-                            for (let i = 0; i < numChunks; i++) {
-                                for (let r = 1; r < mat.rounds; r++) {
-                                    if (dayIdx >= daysCount) break;
-                                    const k = toYMD(availableDates[dayIdx]);
-                                    if (!state.plan[k]) state.plan[k] = [];
-                                    const desc = mat.type === 'range' ? `${getRangeDescList(mat, chunks[i].cStart, chunks[i].cLength)}${unit}` : (mat.type === 'vol' ? `${chunks[i].cStart+1}〜${chunks[i].cStart+chunks[i].cLength}${unit}` : `C${i+1}`);
-                                    state.plan[k].push({
-                                        sub: exam.subject,
-                                        mat: mat.name,
-                                        desc: desc,
-                                        info: `${r}周目`,
-                                        id: mat.id
-                                    });
-                                    dayIdx++;
-                                }
-                            }
-
-                            let remainingDays = daysCount - dayIdx;
-                            if (remainingDays > 0) {
-                                for (let i = 0; i < numChunks; i++) {
-                                    let targetIdx;
-                                    if (remainingDays >= numChunks) {
-                                        targetIdx = dayIdx + i;
-                                    } else {
-                                        targetIdx = dayIdx + Math.floor(i * remainingDays / numChunks);
-                                    }
-                                    if (targetIdx >= daysCount) targetIdx = daysCount - 1;
-                                    const k = toYMD(availableDates[targetIdx]);
-                                    if (!state.plan[k]) state.plan[k] = [];
-                                    const desc = mat.type === 'range' ? `${getRangeDescList(mat, chunks[i].cStart, chunks[i].cLength)}${unit}` : (mat.type === 'vol' ? `${chunks[i].cStart+1}〜${chunks[i].cStart+chunks[i].cLength}${unit}` : `C${i+1}`);
-                                    state.plan[k].push({
-                                        sub: exam.subject,
-                                        mat: mat.name,
-                                        desc: desc,
-                                        info: `${mat.rounds}周目`,
-                                        id: mat.id
-                                    });
-                                }
-                            } else {
-                                let lastIdx = daysCount - 1;
-                                const k = toYMD(availableDates[lastIdx]);
-                                for (let i = 0; i < numChunks; i++) {
-                                    const desc = mat.type === 'range' ? `${getRangeDescList(mat, chunks[i].cStart, chunks[i].cLength)}${unit}` : (mat.type === 'vol' ? `${chunks[i].cStart+1}〜${chunks[i].cStart+chunks[i].cLength}${unit}` : `C${i+1}`);
-                                    state.plan[k].push({
-                                        sub: exam.subject,
-                                        mat: mat.name,
-                                        desc: desc,
-                                        info: `${mat.rounds}周目`,
-                                        id: mat.id
-                                    });
-                                }
-                            }
-                            return;
-                        }
-                    }
-
                     if (mat.type === 'list') {
                         let queue = [];
                         for (let r = 1; r <= mat.rounds; r++) {
                             mat.items.forEach(it => { if (it.d < r) queue.push({ l: it.l, r: r }); });
                         }
-                        // ===== 変更点①：listタイプ：Math.floor＋余りを最終日に積む =====
+                        // ===== listタイプ：Math.floor＋余りを最終日に積む =====
                         const perDay = Math.floor(queue.length / daysCount) || 1;
                         const remainder = queue.length - perDay * daysCount;
                         let cur = 0;
@@ -1059,31 +978,71 @@ function generatePlan() {
                         if (!mat.doneRounds) mat.doneRounds = new Array(mat.rounds).fill(0);
 
                         let queue = [];
-                        for (let r=0; r<mat.rounds; r++) {
-                            let rem = unitsPerRound - (mat.doneRounds[r] || 0);
-                            if (rem > 0) {
-                                queue.push({ r: r+1, start: (mat.doneRounds[r]||0), rem });
+                        let totalRem = 0;
+
+                        // ① チャンク分割の基準サイズを決定
+                        let numChunks = Math.max(3, Math.min(daysCount, 10)); // 3〜10分割
+                        let chunkSize = Math.ceil(unitsPerRound / numChunks);
+                        if (chunkSize < 1) chunkSize = 1;
+
+                        for (let r = 0; r < mat.rounds; r++) {
+                            let start = (mat.doneRounds[r] || 0);
+                            let rem = unitsPerRound - start;
+                            if (rem <= 0) continue;
+                            
+                            totalRem += rem;
+                            
+                            let c_start = start;
+                            let c_rem = rem;
+                            let c_idx = Math.floor(start / chunkSize); 
+                            
+                            // 2周目以降(rounds>=2)は、インターリーブ（短期復習スパイラル化）するための重み(order)をずらす
+                            while (c_rem > 0) {
+                                let nextBoundary = (c_idx + 1) * chunkSize;
+                                let amt = Math.min(c_rem, nextBoundary - c_start);
+                                if (amt <= 0) amt = c_rem;
+                                
+                                queue.push({
+                                    r: r + 1,
+                                    start: c_start,
+                                    rem: amt,
+                                    order: c_idx + (mat.rounds >= 2 ? (r * 1.5) : r)
+                                });
+                                c_start += amt;
+                                c_rem -= amt;
+                                c_idx++;
                             }
                         }
 
-                        let totalRem = queue.reduce((sum, q) => sum + q.rem, 0);
+                        // 順番をソート (スパイラル化: 同じチャンクの次周回が少し遅れて入ってくる)
+                        queue.sort((a, b) => a.order - b.order);
+
                         if (totalRem > 0) {
-                            // ===== 変更点①：Math.floor＋余りを最終日に積む =====
+                            // ===== Math.floor＋余りを最終日に積む =====
                             const perDay = Math.floor(totalRem / daysCount) || 1;
                             const remainder = totalRem - perDay * daysCount;
                             let qIdx = 0;
+                            
                             for (let i = 0; i < daysCount && qIdx < queue.length; i++) {
                                 const k = toYMD(availableDates[i]);
                                 if (!state.plan[k]) state.plan[k] = [];
+                                
                                 // 最終日には余りを上乗せ
                                 let dayRem = (i === daysCount - 1) ? perDay + remainder : perDay;
+                                
                                 while (dayRem > 0 && qIdx < queue.length) {
                                     let q = queue[qIdx];
                                     let amt = Math.min(dayRem, q.rem);
+                                    
                                     let descText = mat.type === 'range' ? `${getRangeDescList(mat, q.start, amt)}${mat.unit||''}` : `${amt}${mat.unit||''}`;
-                                    if (mat.type === 'range') q.start += amt;
-                                    state.plan[k].push({ sub: exam.subject, mat: mat.name, desc: descText, info: `${q.r}周目`, id: mat.id });
-                                    q.rem -= amt; dayRem -= amt;
+                                    let endIdx = q.start + amt;
+                                    
+                                    q.start += amt;
+                                    
+                                    state.plan[k].push({ sub: exam.subject, mat: mat.name, desc: descText, info: `${q.r}周目`, id: mat.id, targetVal: endIdx });
+                                    
+                                    q.rem -= amt;
+                                    dayRem -= amt;
                                     if (q.rem <= 0) qIdx++;
                                 }
                             }
@@ -1167,29 +1126,30 @@ function render() {
     }
 
     const tasks = state.plan[today] || [];
-    document.getElementById('today-list').innerHTML = tasks.length ? tasks.map(t => `<div class="item-row"><div><small>${t.sub}</small><br><b>${t.mat}: ${t.desc}</b></div><span class="status-tag">${t.info}</span></div>`).join('') : '<p style="text-align:center; opacity:0.5;">予定なし</p>';
+    document.getElementById('today-list').innerHTML = tasks.length ? tasks.map((t, idx) => `
+        <div class="item-row" style="${t.completed ? 'opacity: 0.4;' : ''}">
+            <div style="flex:1;">
+                <small>${t.sub}</small><br>
+                <b style="${t.completed ? 'text-decoration: line-through;' : ''}">${t.mat}: ${t.desc}</b>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span class="status-tag">${t.info}</span>
+                ${!t.completed ? `<button class="secondary" style="width:auto; padding: 4px 8px; font-size: 0.75rem; margin:0;" onclick="completeTask('${today}', ${idx})">完了</button>` : `<span style="color:#00f2ff; font-weight:bold; font-size:0.9rem;">✔</span>`}
+            </div>
+        </div>`).join('') : '<p style="text-align:center; opacity:0.5;">予定なし</p>';
 
     // ===== 変更点②：登録済み教材に編集機能を追加 =====
     const DAY_LABELS = ['日','月','火','水','木','金','土'];
     document.getElementById('registered-list').innerHTML = state.exams.map(e => e.materials.map(m => {
-        const spacedLabel = m.spaced
-            ? '<span style="font-size:0.65rem; background:linear-gradient(135deg,rgba(188,0,255,0.2),rgba(0,242,255,0.2)); border:1px solid rgba(188,0,255,0.5); color:#bc00ff; padding:1px 6px; border-radius:4px; margin-left:6px;">⚡ AI忘却防止</span>'
-            : '<span style="font-size:0.65rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:#64748b; padding:1px 6px; border-radius:4px; margin-left:6px;">通常の学習</span>';
+        const spacedLabel = (m.rounds >= 2 && m.type !== 'list')
+            ? '<span style="font-size:0.65rem; background:linear-gradient(135deg,rgba(188,0,255,0.2),rgba(0,242,255,0.2)); border:1px solid rgba(188,0,255,0.5); color:#bc00ff; padding:1px 6px; border-radius:4px; margin-left:6px;">⚡ 短期復習モード</span>'
+            : '';
 
         // 現在の曜日チェックボックスHTML
         const daysHtml = [1,2,3,4,5,6,0].map(d => {
             const checked = (m.days && m.days.includes(d)) ? 'checked' : '';
             return `<label><input type="checkbox" value="${d}" ${checked}>${DAY_LABELS[d]}</label>`;
         }).join('');
-
-        // 間隔反復チェック（listタイプは無効化）
-        const spacedChecked = m.spaced ? 'checked' : '';
-        const spacedDisabled = m.type === 'list' ? 'disabled' : '';
-        const spacedEditHtml = `
-            <div class="mat-edit-spaced-row">
-                <input type="checkbox" id="edit-spaced-${m.id}" ${spacedChecked} ${spacedDisabled}>
-                <span>⚡ AI忘却防止メソッド${m.type === 'list' ? '（リスト形式では使えません）' : ''}</span>
-            </div>`;
 
         // 編集パネルHTML
         const editPanel = `
@@ -1198,7 +1158,6 @@ function render() {
                 <input type="number" id="edit-rounds-${m.id}" value="${m.rounds}" min="1" style="width:80px;">
                 <label style="margin-top:4px;">学習する曜日</label>
                 <div class="edit-days-group" id="edit-days-${m.id}">${daysHtml}</div>
-                ${m.type !== 'list' ? spacedEditHtml : ''}
                 <button class="mat-edit-save-btn" onclick="saveMatEdit(${e.id}, ${m.id})">✔ 保存</button>
             </div>`;
 
